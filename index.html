@@ -98,25 +98,25 @@ function Life4Cuts() {
       photoCount: 4,
       canvasRatio: 1 / 3, // 가로/세로
       slots: [
-        { x: 0.067, y: 0.022, w: 0.867, h: 0.211 },
-        { x: 0.067, y: 0.244, w: 0.867, h: 0.211 },
-        { x: 0.067, y: 0.467, w: 0.867, h: 0.211 },
-        { x: 0.067, y: 0.689, w: 0.867, h: 0.211 },
+        { x: 0.067, y: 0.020, w: 0.867, h: 0.200 },
+        { x: 0.067, y: 0.230, w: 0.867, h: 0.200 },
+        { x: 0.067, y: 0.440, w: 0.867, h: 0.200 },
+        { x: 0.067, y: 0.650, w: 0.867, h: 0.200 },
       ],
-      textY: 0.93,
+      textY: 0.92,
     },
     {
       name: 'grid',
       label: '2x2 그리드',
       photoCount: 4,
-      canvasRatio: 1,
+      canvasRatio: 0.9,
       slots: [
-        { x: 0.04, y: 0.04, w: 0.46, h: 0.44 },
-        { x: 0.50, y: 0.04, w: 0.46, h: 0.44 },
-        { x: 0.04, y: 0.50, w: 0.46, h: 0.44 },
-        { x: 0.50, y: 0.50, w: 0.46, h: 0.44 },
+        { x: 0.04, y: 0.035, w: 0.46, h: 0.42 },
+        { x: 0.50, y: 0.035, w: 0.46, h: 0.42 },
+        { x: 0.04, y: 0.465, w: 0.46, h: 0.42 },
+        { x: 0.50, y: 0.465, w: 0.46, h: 0.42 },
       ],
-      textY: 0.965,
+      textY: 0.945,
     },
     {
       name: 'wide',
@@ -124,12 +124,12 @@ function Life4Cuts() {
       photoCount: 4,
       canvasRatio: 1.33,
       slots: [
-        { x: 0.03, y: 0.05, w: 0.22, h: 0.80 },
-        { x: 0.27, y: 0.05, w: 0.22, h: 0.80 },
-        { x: 0.51, y: 0.05, w: 0.22, h: 0.80 },
-        { x: 0.75, y: 0.05, w: 0.22, h: 0.80 },
+        { x: 0.03, y: 0.05, w: 0.22, h: 0.76 },
+        { x: 0.27, y: 0.05, w: 0.22, h: 0.76 },
+        { x: 0.51, y: 0.05, w: 0.22, h: 0.76 },
+        { x: 0.75, y: 0.05, w: 0.22, h: 0.76 },
       ],
-      textY: 0.92,
+      textY: 0.90,
     },
     {
       name: 'highlight',
@@ -137,12 +137,12 @@ function Life4Cuts() {
       photoCount: 4,
       canvasRatio: 0.6,
       slots: [
-        { x: 0.05, y: 0.03, w: 0.90, h: 0.40 },
-        { x: 0.05, y: 0.45, w: 0.29, h: 0.22 },
-        { x: 0.355, y: 0.45, w: 0.29, h: 0.22 },
-        { x: 0.66, y: 0.45, w: 0.29, h: 0.22 },
+        { x: 0.05, y: 0.025, w: 0.90, h: 0.38 },
+        { x: 0.05, y: 0.415, w: 0.29, h: 0.20 },
+        { x: 0.355, y: 0.415, w: 0.29, h: 0.20 },
+        { x: 0.66, y: 0.415, w: 0.29, h: 0.20 },
       ],
-      textY: 0.76,
+      textY: 0.72,
     },
     {
       name: 'six',
@@ -150,14 +150,14 @@ function Life4Cuts() {
       photoCount: 6,
       canvasRatio: 0.55,
       slots: [
-        { x: 0.04, y: 0.02, w: 0.46, h: 0.28 },
-        { x: 0.50, y: 0.02, w: 0.46, h: 0.28 },
-        { x: 0.04, y: 0.31, w: 0.46, h: 0.28 },
-        { x: 0.50, y: 0.31, w: 0.46, h: 0.28 },
-        { x: 0.04, y: 0.60, w: 0.46, h: 0.28 },
-        { x: 0.50, y: 0.60, w: 0.46, h: 0.28 },
+        { x: 0.04, y: 0.020, w: 0.46, h: 0.265 },
+        { x: 0.50, y: 0.020, w: 0.46, h: 0.265 },
+        { x: 0.04, y: 0.295, w: 0.46, h: 0.265 },
+        { x: 0.50, y: 0.295, w: 0.46, h: 0.265 },
+        { x: 0.04, y: 0.570, w: 0.46, h: 0.265 },
+        { x: 0.50, y: 0.570, w: 0.46, h: 0.265 },
       ],
-      textY: 0.93,
+      textY: 0.905,
     },
   ];
 
@@ -350,20 +350,21 @@ function Life4Cuts() {
             ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
           });
 
-          // 하단 텍스트
-          const textCenterY = currentLayout.textY * frameH;
+          // 하단 텍스트 - textY를 텍스트 블록의 상단 기준으로
+          const textTopY = currentLayout.textY * frameH;
           ctx.fillStyle = colorObj.text;
           ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
 
-          const titleSize = Math.round(frameW * 0.05);
+          const titleSize = Math.round(frameW * 0.042);
           ctx.font = `bold ${titleSize}px Georgia, serif`;
-          ctx.fillText('Life 4 Cuts', frameW / 2, textCenterY);
+          ctx.fillText('Life 4 Cuts', frameW / 2, textTopY);
 
-          const dateSize = Math.round(frameW * 0.028);
+          const dateSize = Math.round(frameW * 0.024);
           ctx.font = `${dateSize}px Georgia, serif`;
           const date = new Date();
           const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-          ctx.fillText(dateStr, frameW / 2, textCenterY + titleSize * 0.9);
+          ctx.fillText(dateStr, frameW / 2, textTopY + titleSize + 8);
 
           setFinalImage(canvas.toDataURL('image/jpeg', 0.95));
         }
