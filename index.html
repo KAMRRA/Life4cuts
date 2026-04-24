@@ -172,7 +172,7 @@ function Life4Cuts() {
 
     for (let i = 0; i < 4; i++) {
       setCurrentShot(i + 1);
-      for (let c = 3; c > 0; c--) {
+      for (let c = 5; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
@@ -281,11 +281,41 @@ function Life4Cuts() {
     }
   };
 
-  const reset = () => {
+  const reset = async () => {
     setPhotos([]);
     setFinalImage(null);
-    setStage('ready');
     setCurrentShot(0);
+    setStage('ready');
+
+    // video 엘리먼트가 다시 렌더링될 때까지 대기 후 스트림 재연결
+    await new Promise(r => setTimeout(r, 100));
+
+    // 기존 스트림이 없거나 끊겼으면 새로 시작
+    if (!streamRef.current || !streamRef.current.active) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        streamRef.current = stream;
+      } catch (err) {
+        setError('카메라를 다시 시작할 수 없어요. 페이지를 새로고침해주세요.');
+        setStage('start');
+        return;
+      }
+    }
+
+    // video 엘리먼트에 스트림 재연결
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.setAttribute('playsinline', 'true');
+      videoRef.current.muted = true;
+      try {
+        await videoRef.current.play();
+      } catch (e) {
+        console.warn('재생 실패:', e);
+      }
+    }
   };
 
   const currentFilter = filters.find(f => f.name === filter)?.css || 'none';
@@ -401,7 +431,7 @@ function Life4Cuts() {
                   촬영 시작 (4장)
                 </button>
                 <p className="text-center text-xs text-stone-500">
-                  3초 카운트다운 후 자동으로 4장이 촬영돼요
+                  5초 카운트다운 후 자동으로 4장이 촬영돼요
                 </p>
               </>
             )}
