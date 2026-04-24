@@ -395,11 +395,8 @@ function Life4Cuts() {
   const downloadImage = async () => {
     if (!finalImage) return;
     const ua = navigator.userAgent || '';
-    // 인스타/페이스북/라인만 차단 (카톡/네이버는 다운로드 허용함)
     const isInApp = /Instagram|FBAN|FBAV|Line/i.test(ua);
-    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
 
-    // 인스타/페북/라인 인앱 브라우저는 다운로드 차단됨 → 안내 모달
     if (isInApp) {
       setShowInAppHelp(true);
       return;
@@ -407,31 +404,10 @@ function Life4Cuts() {
 
     const filename = `life4cuts_${Date.now()}.jpg`;
 
-    // iOS는 Web Share API가 가장 확실함 (사진 앱에 저장 가능)
-    if (isIOS && navigator.canShare) {
-      try {
-        const res = await fetch(finalImage);
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: 'image/jpeg' });
-        if (navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file] });
-            return;
-          } catch (e) {
-            if (e.name === 'AbortError') return;
-          }
-        }
-      } catch (e) {
-        // 실패 시 아래 방식으로 fallback
-      }
-    }
-
-    // 안드로이드/카톡/삼성인터넷/Chrome/PC 공통:
-    // dataURL을 직접 href에 넣는 방식이 가장 호환성이 좋음
     try {
       const link = document.createElement('a');
       link.download = filename;
-      link.href = finalImage; // dataURL 직접 사용 (Blob URL보다 호환성 좋음)
+      link.href = finalImage;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -439,6 +415,30 @@ function Life4Cuts() {
     } catch (err) {
       console.error('저장 실패:', err);
       setError('저장에 실패했어요. 이미지를 길게 눌러 저장해주세요.');
+    }
+  };
+
+  // 공유 버튼: 시스템 공유창을 띄워 다른 앱으로 공유 (인스타, 카톡 등)
+  const shareImage = async () => {
+    if (!finalImage) return;
+    try {
+      const res = await fetch(finalImage);
+      const blob = await res.blob();
+      const file = new File([blob], `life4cuts_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: '인생네컷' });
+          return;
+        } catch (e) {
+          if (e.name === 'AbortError') return; // 사용자가 공유 취소
+        }
+      } else {
+        // 공유 API 미지원 시 알림
+        setError('이 브라우저에서는 공유 기능을 지원하지 않아요. 저장 버튼을 이용해주세요.');
+      }
+    } catch (e) {
+      console.error('공유 실패:', e);
+      setError('공유에 실패했어요. 저장 버튼을 이용해주세요.');
     }
   };
 
@@ -461,20 +461,6 @@ function Life4Cuts() {
       // 클립보드 API 실패 시 프롬프트로 대체
       prompt('아래 링크를 복사해서 Chrome/Safari에 붙여넣어 주세요:', location.href);
     }
-  };
-
-  const shareImage = async () => {
-    if (!finalImage) return;
-    try {
-      const res = await fetch(finalImage);
-      const blob = await res.blob();
-      const file = new File([blob], `life4cuts_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '인생네컷' });
-        return;
-      }
-    } catch (e) {}
-    downloadImage();
   };
 
   const reset = async () => {
