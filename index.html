@@ -25,7 +25,6 @@
 <script type="text/babel" data-type="module">
 const { useState, useRef, useEffect } = React;
 
-// 아이콘 컴포넌트 (Lucide 스타일)
 const Icon = ({ d, className = "w-5 h-5", fill = "none" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     {d}
@@ -37,8 +36,8 @@ const RefreshIcon = (p) => <Icon {...p} d={<><polyline points="1 4 1 10 7 10"/><
 const HeartIcon = (p) => <Icon {...p} d={<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>} />;
 const SparkIcon = (p) => <Icon {...p} d={<path d="M12 2l2.35 7.24H22l-6.18 4.49L18.18 21 12 16.51 5.82 21l2.36-7.27L2 9.24h7.65L12 2z"/>} />;
 const ShareIcon = (p) => <Icon {...p} d={<><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></>} />;
+const SwitchIcon = (p) => <Icon {...p} d={<><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M9 9l3-3 3 3"/><path d="M15 15l-3 3-3-3"/><path d="M12 6v12"/></>} />;
 
-// 레이아웃 미리보기 썸네일
 const LayoutPreview = ({ layout, active }) => {
   const w = 36;
   const h = w / layout.canvasRatio;
@@ -89,9 +88,9 @@ function Life4Cuts() {
   const [finalImage, setFinalImage] = useState(null);
   const [error, setError] = useState(null);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [facingMode, setFacingMode] = useState('user');
+  const [zoom, setZoom] = useState(1);
 
-  // 레이아웃 정의: photoCount, 캔버스 크기, 각 사진의 위치/크기 (비율 0~1)
-  // 사진 사이/주변에 프레임 배경색이 보이도록 간격을 둠
   const layouts = [
     {
       name: 'classic',
@@ -191,52 +190,48 @@ function Life4Cuts() {
     };
   }, []);
 
+  const initStream = async (mode) => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: mode,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
+    streamRef.current = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.setAttribute('playsinline', 'true');
+      videoRef.current.muted = true;
+      try {
+        await videoRef.current.play();
+      } catch (e) {
+        console.warn('재생 실패:', e);
+      }
+    }
+    return stream;
+  };
+
   const startCamera = async () => {
-    // HTTPS 체크
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       setError('카메라는 HTTPS 환경에서만 작동해요. GitHub Pages 주소(https://...)로 접속해주세요.');
       return;
     }
-
-    // getUserMedia 지원 체크
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setError('이 브라우저는 카메라를 지원하지 않아요. Chrome이나 Safari를 사용해보세요.');
       return;
     }
 
     try {
-      // 먼저 stage를 ready로 바꿔서 video 엘리먼트가 렌더링되게 함
       setStage('ready');
       setError(null);
-
-      // video 엘리먼트가 DOM에 나타날 때까지 잠깐 대기
       await new Promise(r => setTimeout(r, 100));
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // iOS Safari를 위한 추가 처리
-        videoRef.current.setAttribute('playsinline', 'true');
-        videoRef.current.setAttribute('muted', 'true');
-        videoRef.current.muted = true;
-
-        // 비디오 재생 시도
-        try {
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.warn('자동 재생 실패, 사용자 상호작용 필요:', playErr);
-        }
-      }
+      await initStream(facingMode);
     } catch (err) {
       console.error('카메라 오류:', err);
       let msg = '카메라를 시작할 수 없어요. ';
@@ -245,12 +240,23 @@ function Life4Cuts() {
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         msg += '카메라를 찾을 수 없어요.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        msg += '다른 앱이 카메라를 사용 중이에요. 다른 앱을 종료해주세요.';
+        msg += '다른 앱이 카메라를 사용 중이에요.';
       } else {
         msg += err.message || '알 수 없는 오류';
       }
       setError(msg);
       setStage('start');
+    }
+  };
+
+  const switchCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    setZoom(1);
+    try {
+      await initStream(newMode);
+    } catch (err) {
+      setError('카메라 전환에 실패했어요. 이 기기는 해당 카메라가 없을 수 있어요.');
     }
   };
 
@@ -260,15 +266,28 @@ function Life4Cuts() {
     if (!video || !canvas) return null;
 
     const ctx = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    canvas.width = vw;
+    canvas.height = vh;
 
-    ctx.save();
-    ctx.scale(-1, 1);
-    ctx.translate(-canvas.width, 0);
+    const z = Math.max(0.5, Math.min(3, zoom));
+    const sw = vw / z;
+    const sh = vh / z;
+    const sx = (vw - sw) / 2;
+    const sy = (vh - sh) / 2;
+
     ctx.filter = filters.find(f => f.name === filter)?.css || 'none';
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
+
+    if (facingMode === 'user') {
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.translate(-vw, 0);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, vw, vh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, vw, vh);
+    }
 
     return canvas.toDataURL('image/jpeg', 0.92);
   };
@@ -311,7 +330,7 @@ function Life4Cuts() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const baseSize = 1200; // 기준 크기
+    const baseSize = 1200;
     const frameW = baseSize;
     const frameH = Math.round(baseSize / currentLayout.canvasRatio);
     canvas.width = frameW;
@@ -337,7 +356,6 @@ function Life4Cuts() {
             const dw = slot.w * frameW;
             const dh = slot.h * frameH;
 
-            // 이미지 비율 맞춰서 크롭 (object-fit: cover)
             const imgRatio = image.width / image.height;
             const targetRatio = dw / dh;
             let sx = 0, sy = 0, sw = image.width, sh = image.height;
@@ -351,7 +369,6 @@ function Life4Cuts() {
             ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
           });
 
-          // 하단 텍스트 - textY를 텍스트 블록의 상단 기준으로
           const textTopY = currentLayout.textY * frameH;
           ctx.fillStyle = colorObj.text;
           ctx.textAlign = 'center';
@@ -376,12 +393,9 @@ function Life4Cuts() {
 
   const downloadImage = async () => {
     if (!finalImage) return;
-
-    // 인앱 브라우저(인스타, 페이스북, 카카오 등) 감지
     const ua = navigator.userAgent || '';
     const isInApp = /Instagram|FBAN|FBAV|KAKAOTALK|Line|NAVER|everytimeApp/i.test(ua);
 
-    // 1순위: Web Share API (파일 공유) — 인앱에서도 대부분 작동
     try {
       const res = await fetch(finalImage);
       const blob = await res.blob();
@@ -390,11 +404,8 @@ function Life4Cuts() {
         await navigator.share({ files: [file], title: '인생네컷' });
         return;
       }
-    } catch (e) {
-      // share 실패 시 다음 방법으로
-    }
+    } catch (e) {}
 
-    // 2순위: 인앱 브라우저면 새 탭에 이미지 열기 (길게 눌러 저장 안내)
     if (isInApp) {
       const win = window.open();
       if (win) {
@@ -412,12 +423,11 @@ function Life4Cuts() {
         `);
         win.document.close();
       } else {
-        setError('저장을 위해 브라우저(Chrome/Safari)로 열어주세요. 주소창 옆 ⋮ 메뉴에서 "브라우저로 열기"를 누르세요.');
+        setError('저장을 위해 브라우저(Chrome/Safari)로 열어주세요.');
       }
       return;
     }
 
-    // 3순위: 일반 브라우저 — 기본 다운로드
     const link = document.createElement('a');
     link.download = `life4cuts_${Date.now()}.jpg`;
     link.href = finalImage;
@@ -436,9 +446,7 @@ function Life4Cuts() {
         await navigator.share({ files: [file], title: '인생네컷' });
         return;
       }
-    } catch (e) {
-      // 공유 실패 시 다운로드로 fallback
-    }
+    } catch (e) {}
     downloadImage();
   };
 
@@ -448,26 +456,17 @@ function Life4Cuts() {
     setCurrentShot(0);
     setStage('ready');
 
-    // video 엘리먼트가 다시 렌더링될 때까지 대기 후 스트림 재연결
     await new Promise(r => setTimeout(r, 100));
 
-    // 기존 스트림이 없거나 끊겼으면 새로 시작
     if (!streamRef.current || !streamRef.current.active) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        streamRef.current = stream;
+        await initStream(facingMode);
       } catch (err) {
         setError('카메라를 다시 시작할 수 없어요. 페이지를 새로고침해주세요.');
         setStage('start');
         return;
       }
-    }
-
-    // video 엘리먼트에 스트림 재연결
-    if (videoRef.current && streamRef.current) {
+    } else if (videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
       videoRef.current.setAttribute('playsinline', 'true');
       videoRef.current.muted = true;
@@ -540,9 +539,47 @@ function Life4Cuts() {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)', filter: currentFilter }}
+                className="w-full h-full object-cover transition-transform duration-200"
+                style={{
+                  transform: `${facingMode === 'user' ? 'scaleX(-1)' : ''} scale(${zoom})`,
+                  filter: currentFilter,
+                }}
               />
+
+              {stage === 'ready' && (
+                <>
+                  <div className="absolute top-4 left-4 bg-black/50 backdrop-blur text-white px-3 py-1.5 rounded-full text-xs font-bold">
+                    {facingMode === 'user' ? '📷 전면' : '📷 후면'}
+                  </div>
+                  <button
+                    onClick={switchCamera}
+                    className="absolute top-4 right-4 bg-black/50 backdrop-blur hover:bg-black/70 text-white w-11 h-11 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all"
+                    title="카메라 전환"
+                  >
+                    <SwitchIcon className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur rounded-full px-2 py-1 flex items-center gap-1">
+                    {[
+                      { z: 0.6, label: '0.6x' },
+                      { z: 1, label: '1x' },
+                      { z: 1.5, label: '1.5x' },
+                      { z: 2, label: '2x' },
+                    ].map(opt => (
+                      <button
+                        key={opt.z}
+                        onClick={() => setZoom(opt.z)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          Math.abs(zoom - opt.z) < 0.05
+                            ? 'bg-white text-black'
+                            : 'text-white/80 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {isFlashing && <div className="absolute inset-0 bg-white flash pointer-events-none"></div>}
 
@@ -621,8 +658,9 @@ function Life4Cuts() {
                   <HeartIcon className="w-5 h-5" fill="currentColor" />
                   촬영 시작 ({layouts.find(l => l.name === layout).photoCount}장)
                 </button>
-                <p className="text-center text-xs text-stone-500">
-                  5초 카운트다운 후 자동으로 촬영돼요
+                <p className="text-center text-xs text-stone-500 leading-relaxed">
+                  5초 카운트다운 후 자동으로 촬영돼요<br />
+                  👥 여러 명이면 <b>0.6x 광각</b>이나 <b>후면 카메라</b>(🔄)를 써보세요
                 </p>
               </>
             )}
