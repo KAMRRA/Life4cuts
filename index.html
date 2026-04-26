@@ -914,40 +914,92 @@ function Life4Cuts() {
     setSelectedDecoId(null);
   };
 
-  // 꾸미기: 드래그 처리
-  const handleDecoTouchStart = (e, decoId) => {
+  // 꾸미기: 드래그 시작 (포인터 이벤트 기반 - 마우스/터치 통합)
+  const handleDecoPointerDown = (e, decoId) => {
     e.stopPropagation();
-    setSelectedDecoId(decoId);
-    const touch = e.touches ? e.touches[0] : e;
-    const container = e.currentTarget.parentElement.getBoundingClientRect();
-    const deco = decorations.find(d => d.id === decoId);
-    if (!deco) return;
-    dragRef.current = {
-      decoId,
-      startX: touch.clientX,
-      startY: touch.clientY,
-      startDecoX: deco.x,
-      startDecoY: deco.y,
-      containerW: container.width,
-      containerH: container.height,
-    };
-  };
-
-  const handleDecoTouchMove = (e) => {
-    if (!dragRef.current) return;
     e.preventDefault();
-    const touch = e.touches ? e.touches[0] : e;
-    const dx = (touch.clientX - dragRef.current.startX) / dragRef.current.containerW;
-    const dy = (touch.clientY - dragRef.current.startY) / dragRef.current.containerH;
-    const newX = Math.max(0, Math.min(1, dragRef.current.startDecoX + dx));
-    const newY = Math.max(0, Math.min(1, dragRef.current.startDecoY + dy));
-    setDecorations(prev => prev.map(d =>
-      d.id === dragRef.current.decoId ? { ...d, x: newX, y: newY } : d
-    ));
-  };
+    setSelectedDecoId(decoId);
 
-  const handleDecoTouchEnd = () => {
-    dragRef.current = null;
+    const target = e.currentTarget;
+    const container = target.parentElement;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    const startInfo = {
+      decoId,
+      startX: clientX,
+      startY: clientY,
+      containerW: rect.width,
+      containerH: rect.height,
+    };
+
+    // 함수형 setState 사용으로 최신 상태 보장
+    let startDecoX = 0.5;
+    let startDecoY = 0.5;
+    setDecorations(prev => {
+      const found = prev.find(d => d.id === decoId);
+      if (found) {
+        startDecoX = found.x;
+        startDecoY = found.y;
+      }
+      return prev;
+    });
+
+    // 약간의 지연 후 시작 좌표 설정
+    setTimeout(() => {
+      const found = decorations.find(d => d.id === decoId);
+      if (found) {
+        startInfo.startDecoX = found.x;
+        startInfo.startDecoY = found.y;
+      } else {
+        startInfo.startDecoX = startDecoX;
+        startInfo.startDecoY = startDecoY;
+      }
+    }, 0);
+
+    startInfo.startDecoX = startDecoX;
+    startInfo.startDecoY = startDecoY;
+    dragRef.current = startInfo;
+
+    const handleMove = (moveEvent) => {
+      if (!dragRef.current) return;
+      moveEvent.preventDefault();
+
+      const mClientX = moveEvent.clientX !== undefined
+        ? moveEvent.clientX
+        : (moveEvent.touches && moveEvent.touches[0] ? moveEvent.touches[0].clientX : 0);
+      const mClientY = moveEvent.clientY !== undefined
+        ? moveEvent.clientY
+        : (moveEvent.touches && moveEvent.touches[0] ? moveEvent.touches[0].clientY : 0);
+
+      const dx = (mClientX - dragRef.current.startX) / dragRef.current.containerW;
+      const dy = (mClientY - dragRef.current.startY) / dragRef.current.containerH;
+      const newX = Math.max(0, Math.min(1, dragRef.current.startDecoX + dx));
+      const newY = Math.max(0, Math.min(1, dragRef.current.startDecoY + dy));
+
+      const draggedId = dragRef.current.decoId;
+      setDecorations(prev => prev.map(d =>
+        d.id === draggedId ? { ...d, x: newX, y: newY } : d
+      ));
+    };
+
+    const handleEnd = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
   };
 
   return (
@@ -1166,11 +1218,6 @@ function Life4Cuts() {
                 <div
                   className="relative rounded-2xl shadow-2xl overflow-hidden bg-stone-100"
                   style={{ maxHeight: '480px' }}
-                  onTouchMove={handleDecoTouchMove}
-                  onTouchEnd={handleDecoTouchEnd}
-                  onMouseMove={(e) => dragRef.current && handleDecoTouchMove(e)}
-                  onMouseUp={handleDecoTouchEnd}
-                  onMouseLeave={handleDecoTouchEnd}
                   onClick={() => setSelectedDecoId(null)}
                 >
                   {finalImage && (
@@ -1184,8 +1231,8 @@ function Life4Cuts() {
                   {decorations.map(deco => (
                     <div
                       key={deco.id}
-                      onTouchStart={(e) => handleDecoTouchStart(e, deco.id)}
-                      onMouseDown={(e) => handleDecoTouchStart(e, deco.id)}
+                      onTouchStart={(e) => handleDecoPointerDown(e, deco.id)}
+                      onMouseDown={(e) => handleDecoPointerDown(e, deco.id)}
                       onClick={(e) => { e.stopPropagation(); setSelectedDecoId(deco.id); }}
                       className={`absolute cursor-move select-none ${selectedDecoId === deco.id ? 'ring-2 ring-rose-400 ring-offset-1' : ''}`}
                       style={{
@@ -1196,6 +1243,8 @@ function Life4Cuts() {
                         lineHeight: 1,
                         touchAction: 'none',
                         padding: '4px',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
                       }}
                     >
                       {deco.type === 'sticker' ? (
