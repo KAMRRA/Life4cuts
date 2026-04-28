@@ -116,6 +116,30 @@ function Life4Cuts() {
       textY: 0.86,
     },
     {
+      name: 'three',
+      label: '세로 3장',
+      photoCount: 3,
+      canvasRatio: 0.42,
+      slots: [
+        { x: 0.08, y: 0.030, w: 0.84, h: 0.255 },
+        { x: 0.08, y: 0.300, w: 0.84, h: 0.255 },
+        { x: 0.08, y: 0.570, w: 0.84, h: 0.255 },
+      ],
+      textY: 0.87,
+    },
+    {
+      name: 'trio',
+      label: '트리오',
+      photoCount: 3,
+      canvasRatio: 0.7,
+      slots: [
+        { x: 0.05, y: 0.030, w: 0.90, h: 0.500 },
+        { x: 0.05, y: 0.550, w: 0.44, h: 0.300 },
+        { x: 0.51, y: 0.550, w: 0.44, h: 0.300 },
+      ],
+      textY: 0.88,
+    },
+    {
       name: 'grid',
       label: '2x2 그리드',
       photoCount: 4,
@@ -1132,7 +1156,7 @@ function Life4Cuts() {
               <>
                 <div className="bg-white rounded-2xl p-4 shadow-md">
                   <p className="text-xs font-bold text-stone-500 mb-3 tracking-wider uppercase">레이아웃</p>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {layouts.map(l => (
                       <button
                         key={l.name}
